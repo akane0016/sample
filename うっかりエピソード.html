@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>コミュニティ - うっかりエピソード共有</title>
+  <!-- Google Fonts & 共通スタイルシート -->
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Helvetica+Neue:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link href="style2.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="site-header">
+    <div class="container">
+      <!-- タイトルをピンク色にする -->
+      <h1 class="site-title">コミュニティーページ</h1>
+      <!-- ナビゲーション or 戻るボタン -->
+      <nav class="site-nav">
+        <ul>
+          <li><a href="index.html#categories" class="btn-back">← カテゴリーに戻る</a></li>
+          <li><a href="index.html" class="btn-back">← トップに戻る</a></li>
+        </ul>
+      </nav>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main">
+    <!-- エピソード投稿セクション -->
+    <section class="section community-posting">
+      <div class="container">
+        <h2>うっかりエピソード共有　あなたのエピソードを投稿してね！</h2>
+        <form id="postForm" class="post-form">
+
+          <textarea id="postContent" placeholder="エピソードを入力してください..." required></textarea>
+          <button type="submit">投稿する</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- コミュニティフィード -->
+    <section class="section community-feed">
+      <div class="container">
+        <h2>返信フォーム</h2>
+        <div id="postList" class="post-list">
+          <!-- 投稿は JavaScript により追加・表示されます -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- フッター -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2025 おとなのうっかりライフハック</p>
+    </div>
+  </footer>
+
+  <!-- JavaScript：いいね・リプライ・削除・ローカルストレージ機能 -->
+  <script>
+    // 投稿データを格納する配列
+    let posts = [];
+
+    // DOM要素を取得
+    const postForm = document.getElementById('postForm');
+    const postContent = document.getElementById('postContent');
+    const postList = document.getElementById('postList');
+
+    // ページ読み込み時にローカルストレージから投稿データを読み込み、表示
+    document.addEventListener('DOMContentLoaded', () => {
+      loadPostsFromStorage();
+      renderPosts();
+    });
+
+    // 新規投稿フォームの送信イベント
+    postForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const content = postContent.value.trim();
+      if (content) {
+        addPost(content);
+        postContent.value = '';
+      }
+    });
+
+    // 投稿を追加する関数
+    function addPost(content) {
+      // 投稿オブジェクトを作成
+      const newPost = {
+        id: Date.now(),      // ユニークID（簡易的に現在時刻を使用）
+        content: content,
+        likes: 0,
+        replies: []          // リプライを格納する配列
+      };
+      // 配列に追加し、ローカルストレージに保存
+      posts.push(newPost);
+      savePostsToStorage();
+
+      // 再描画
+      renderPosts();
+    }
+
+    // ローカルストレージに保存
+    function savePostsToStorage() {
+      localStorage.setItem('communityPosts', JSON.stringify(posts));
+    }
+
+    // ローカルストレージから読み込み
+    function loadPostsFromStorage() {
+      const data = localStorage.getItem('communityPosts');
+      posts = data ? JSON.parse(data) : [];
+    }
+
+    // 投稿一覧を再描画
+    function renderPosts() {
+      // いったんリストをクリア
+      postList.innerHTML = '';
+
+      // 新しい投稿を上に表示したい場合は配列の末尾が古い投稿、
+      // 先頭が新しい投稿として扱う => reverse() せずに最後に作った投稿を最後に描画するなら
+      // 順番を変えたい場合は loop を逆に回す
+      // 今回は "リプライがついたら先頭へ" という仕様があるので
+      // あえて "古い投稿 -> 新しい投稿" の順で描画し、リプライ時に移動させる手法を使います。
+      for (let i = 0; i < posts.length; i++) {
+        const post = posts[i];
+        const postItem = createPostItem(post);
+        // ここでは古い投稿から順に下に表示
+        postList.appendChild(postItem);
+      }
+    }
+
+    // 投稿DOM要素を作成
+    function createPostItem(post) {
+      // 投稿全体のコンテナ
+      const postItem = document.createElement('div');
+      postItem.className = 'post-item';
+
+      // 投稿本文
+      const postText = document.createElement('p');
+      postText.textContent = post.content;
+      postItem.appendChild(postText);
+
+      // アクションエリア（いいね、リプライ、削除）
+      const actions = document.createElement('div');
+      actions.className = 'post-actions';
+
+      // いいねボタン
+      const likeButton = document.createElement('button');
+      likeButton.textContent = 'いいね';
+      likeButton.className = 'like-button';
+
+      // いいねカウンター
+      const likeCount = document.createElement('span');
+      likeCount.textContent = post.likes;
+      likeCount.className = 'like-count';
+
+      likeButton.addEventListener('click', () => {
+        post.likes++;
+        savePostsToStorage();
+        // いいね数を再描画
+        likeCount.textContent = post.likes;
+        // もし「いいね」でも先頭に持ってきたい場合は以下を追加
+        // movePostToTop(post);
+      });
+
+      actions.appendChild(likeButton);
+      actions.appendChild(likeCount);
+
+      // リプライボタン
+      const replyButton = document.createElement('button');
+      replyButton.textContent = 'リプライ';
+      replyButton.className = 'reply-button';
+      actions.appendChild(replyButton);
+
+      // 削除ボタン
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = '削除';
+      deleteButton.className = 'delete-button';
+      actions.appendChild(deleteButton);
+
+      postItem.appendChild(actions);
+
+      // リプライフォーム
+      const replyForm = document.createElement('form');
+      replyForm.className = 'reply-form';
+      replyForm.style.display = 'none';
+
+      const replyInput = document.createElement('input');
+      replyInput.type = 'text';
+      replyInput.placeholder = 'リプライを入力...';
+      replyForm.appendChild(replyInput);
+
+      const replySubmit = document.createElement('button');
+      replySubmit.type = 'submit';
+      replySubmit.textContent = '送信';
+      replyForm.appendChild(replySubmit);
+
+      postItem.appendChild(replyForm);
+
+      // リプライ一覧
+      const replyList = document.createElement('div');
+      replyList.className = 'reply-list';
+      postItem.appendChild(replyList);
+
+      // 既存のリプライを表示
+      post.replies.forEach(reply => {
+        const replyItem = document.createElement('div');
+        replyItem.className = 'reply-item';
+        replyItem.textContent = reply;
+        replyList.appendChild(replyItem);
+      });
+
+      // リプライボタン押下でフォーム表示/非表示切替
+      replyButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        replyForm.style.display = (replyForm.style.display === 'none' || replyForm.style.display === '') ? 'block' : 'none';
+      });
+
+      // リプライフォーム送信
+      replyForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const replyText = replyInput.value.trim();
+        if (replyText) {
+          post.replies.push(replyText);
+          replyInput.value = '';
+          replyForm.style.display = 'none';
+          // リプライ表示を更新
+          renderPosts();
+          // リプライが来たら投稿を先頭に持ってくる
+          movePostToTop(post);
+        }
+      });
+
+      // 削除ボタン押下
+      deleteButton.addEventListener('click', () => {
+        if (confirm('この投稿を削除しますか？')) {
+          // posts配列から該当の投稿を削除
+          posts = posts.filter(p => p.id !== post.id);
+          savePostsToStorage();
+          renderPosts();
+        }
+      });
+
+      return postItem;
+    }
+
+    // リプライが来た投稿を先頭に移動
+    function movePostToTop(post) {
+      // 一度削除してから先頭に挿入
+      posts = posts.filter(p => p.id !== post.id);
+      posts.push(post); 
+      // pushすると末尾に入るため、この場合は最後に入った投稿を再描画時に最上部へ表示させたいなら
+      // renderPosts() のループを逆に回すなど、実装次第で調整。
+      // ここでは単純に "配列の末尾 = 新しい投稿" としておき、再描画で上に表示されるようにします。
+
+      savePostsToStorage();
+      renderPosts();
+    }
+  </script>
+</body>
+</html>
